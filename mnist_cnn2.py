@@ -62,30 +62,35 @@ def main(_):
     bfc2 = bias_variable([10])
     y_conv = tf.matmul(hfc1_drop,wfc2) + bfc2
 
+    global_step = tf.Variable(1,name="global_step",trainable=False)
+
     #损失函数
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_conv))
 
     #优化函数
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy,global_step=global_step)
 
     #准确率
     correct_prediction = tf.equal(tf.argmax(y_conv,1),tf.argmax(y,1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
 
-    sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver(max_to_keep=1)
     saver_max_acc = 0
     ckpt = tf.train.get_checkpoint_state(ckpt_path)
     if ckpt and ckpt.model_checkpoint_path:
-        print(ckpt)
-    for i in range(1000):
+       saver.restore(sess,tf.train.latest_checkpoint(ckpt_path))
+       _,step = sess.run([train_step,global_step])
+       print("Restore from CKPT step:%d" % step )
+    else:
+        sess.run(tf.global_variables_initializer())
+    for step in range(1000):
         batch = mnist.train.next_batch(50)
 
-        if i%100 ==0:
+        if step%100 ==0:
             train_accuracy = accuracy.eval(feed_dict={x:batch[0],y:batch[1],keep_prob:1.0})
-            print("step %d,trainning accuracy %g" % (i,train_accuracy))
+            print("step %d,trainning accuracy %g" % (step,train_accuracy))
             #保存模型
-            saver.save(sess, ckpt_path + "mnist.ckpt", global_step=i + 1)
+            saver.save(sess, ckpt_path + "mnist.ckpt", global_step=step)
 
         train_step.run(feed_dict={x:batch[0],y:batch[1],keep_prob:0.5})
 
