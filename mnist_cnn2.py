@@ -10,8 +10,10 @@ import argparse
 import sys
 FLAGS = None
 
-def main():
+def main(_):
     data_path = "data/"
+    print("FLAGS.data_dir",FLAGS.data_dir)
+    ckpt_path = FLAGS.ckpt_dir
     mnist = input_data.read_data_sets(FLAGS.data_dir,one_hot=True)
     x = tf.placeholder(tf.float32,[None,784])
     y = tf.placeholder(tf.float32,[None,10])
@@ -71,19 +73,32 @@ def main():
     accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
 
     sess.run(tf.global_variables_initializer())
-
-    for i in range(20000):
+    saver = tf.train.Saver(max_to_keep=1)
+    saver_max_acc = 0
+    ckpt = tf.train.get_checkpoint_state(ckpt_path)
+    if ckpt and ckpt.model_checkpoint_path:
+        print(ckpt)
+    for i in range(1000):
         batch = mnist.train.next_batch(50)
+
         if i%100 ==0:
-            train_accuracy = accuracy.eval(feed_dict={x:batch[0],y:batch[1]})
+            train_accuracy = accuracy.eval(feed_dict={x:batch[0],y:batch[1],keep_prob:1.0})
             print("step %d,trainning accuracy %g" % (i,train_accuracy))
+            #保存模型
+            saver.save(sess, ckpt_path + "mnist.ckpt", global_step=i + 1)
+
         train_step.run(feed_dict={x:batch[0],y:batch[1],keep_prob:0.5})
+
+
+    model_file = tf.train.latest_checkpoint(ckpt_path)
+    saver.restore(sess,model_file)
 
     print("test accuracy %g" % accuracy.eval(feed_dict={x:mnist.test.images,y:mnist.test.labels,keep_prob:1.0}))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir",type=str,default="data/",help="Direcotry for mnist data.")
+    parser.add_argument("--ckpt_dir",type=str,default="ckpt/",help = "Directory ro saver.")
+    FLAGS,unparsed = parser.parse_known_args(sys.argv[1:])
 
-    FLAGS,unparsed = parser.parse_known_args()
-    tf.app.run(main=main,argv=[sys.argv[0]] + unparsed)
+    tf.app.run()
