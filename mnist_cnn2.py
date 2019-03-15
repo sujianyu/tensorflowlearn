@@ -62,7 +62,7 @@ def main(_):
     bfc2 = bias_variable([10])
     y_conv = tf.matmul(hfc1_drop,wfc2) + bfc2
 
-    global_step = tf.Variable(1,name="global_step",trainable=False)
+    global_step = tf.Variable(0,name="global_step",trainable=False)
 
     #损失函数
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y,logits=y_conv))
@@ -86,7 +86,7 @@ def main(_):
         for i in range(20000):
             batch = mnist.train.next_batch(50)
             _,step = sess.run([train_step,global_step], feed_dict={x: batch[0], y: batch[1], keep_prob: 0.5})
-            i=step-1
+            i=step
             if i%100 ==0:
                 train_accuracy = accuracy.eval(feed_dict={x:batch[0],y:batch[1],keep_prob:1.0})
                 print("step %d,trainning accuracy %g,i=%d" % (step,train_accuracy,i))
