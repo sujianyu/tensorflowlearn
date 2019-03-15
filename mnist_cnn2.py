@@ -32,7 +32,7 @@ def main(_):
     def max_pool_2x2(x):
         return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding="SAME")
 
-    sess = tf.InteractiveSession()
+
 
     x_image = tf.reshape(x,[-1,28,28,1])
 
@@ -76,29 +76,30 @@ def main(_):
 
     saver = tf.train.Saver(max_to_keep=1)
     saver_max_acc = 0
-    ckpt = tf.train.get_checkpoint_state(ckpt_path)
-    if ckpt and ckpt.model_checkpoint_path:
-       saver.restore(sess,tf.train.latest_checkpoint(ckpt_path))
-       _,step = sess.run([train_step,global_step])
-       print("Restore from CKPT step:%d" % step )
-    else:
-        sess.run(tf.global_variables_initializer())
-    for step in range(1000):
-        batch = mnist.train.next_batch(50)
+    with tf.Session() as sess:
+        ckpt = tf.train.get_checkpoint_state(ckpt_path)
+        if ckpt and ckpt.model_checkpoint_path:
+           saver.restore(sess,tf.train.latest_checkpoint(ckpt_path))
+           print("Restore from CKPT")
+        else:
+            sess.run(tf.global_variables_initializer())
+        for i in range(20000):
+            batch = mnist.train.next_batch(50)
+            _,step = sess.run([train_step,global_step], feed_dict={x: batch[0], y: batch[1], keep_prob: 0.5})
+            i=step-1
+            if i%100 ==0:
+                train_accuracy = accuracy.eval(feed_dict={x:batch[0],y:batch[1],keep_prob:1.0})
+                print("step %d,trainning accuracy %g,i=%d" % (step,train_accuracy,i))
+                #保存模型
+                saver.save(sess, ckpt_path + "mnist.ckpt", global_step=i+1)
 
-        if step%100 ==0:
-            train_accuracy = accuracy.eval(feed_dict={x:batch[0],y:batch[1],keep_prob:1.0})
-            print("step %d,trainning accuracy %g" % (step,train_accuracy))
-            #保存模型
-            saver.save(sess, ckpt_path + "mnist.ckpt", global_step=step)
-
-        train_step.run(feed_dict={x:batch[0],y:batch[1],keep_prob:0.5})
 
 
-    model_file = tf.train.latest_checkpoint(ckpt_path)
-    saver.restore(sess,model_file)
 
-    print("test accuracy %g" % accuracy.eval(feed_dict={x:mnist.test.images,y:mnist.test.labels,keep_prob:1.0}))
+        model_file = tf.train.latest_checkpoint(ckpt_path)
+        saver.restore(sess,model_file)
+
+        print("test accuracy %g" % accuracy.eval(feed_dict={x:mnist.test.images,y:mnist.test.labels,keep_prob:1.0}))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
